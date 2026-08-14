@@ -40,7 +40,8 @@
       "status": "opt-in-only",
       "legacy": "_matrix_from_tidy_text used groupby.size() after computing tf-idf",
       "current": "edge_weight='term_weight' default; edge_weight='count' reconstructs the 2024 graph",
-      "risk": "high-value-unverified",
+      "risk": "material-on-env-card-corpus",
+      "evidence": "docs/cn-audit/edge-weight-compare/README.md",
       "envCard": "active-reuse if the 2024 installed package was used",
       "emergencyEdu": "compatibility-reference",
       "fukushima": "historical-only"

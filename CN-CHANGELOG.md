@@ -22,4 +22,4 @@ Official `0.10.5` behavior is unchanged unless a Chinese-localization argument i
 
 ## Evidence
 
-See `docs/cn-audit/inventory.json` and `docs/cn-audit/baselines.md`.
+See `docs/cn-audit/inventory.json`, `docs/cn-audit/baselines.md`, and the env-card edge-weight comparison in `docs/cn-audit/edge-weight-compare/`.

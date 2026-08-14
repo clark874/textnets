@@ -1,0 +1,384 @@
+{
+  "corpus": {
+    "path": "/Users/moongoat/Downloads/按列合并的文档数据.csv",
+    "n_docs": 11,
+    "labels": [
+      "成分信息",
+      "生态文明",
+      "食品安全",
+      "评估情况",
+      "排放背景",
+      "外交关系",
+      "信息公开",
+      "技术方案",
+      "公众舆论",
+      "责任义务",
+      "多边合作"
+    ],
+    "n_tidy_rows": 180,
+    "n_terms": 96,
+    "dict_size": 9130,
+    "stopwords": 779,
+    "seed": 42
+  },
+  "bipartite": [
+    {
+      "setting": "top5",
+      "left_nodes": 53,
+      "right_nodes": 53,
+      "left_edges": 55,
+      "right_edges": 55,
+      "shared_edges": 55,
+      "only_term_weight": 0,
+      "only_count": 0,
+      "same_topology": true,
+      "edge_weight": {
+        "n": 55,
+        "rho": -0.33786127753865064,
+        "p": 0.011643796671934246
+      },
+      "clusters_term_weight": 48,
+      "clusters_count": 7,
+      "cluster_pairwise_agreement": 0.8657474600870827,
+      "strength_docs": {
+        "n": 11,
+        "rho": -0.5443332630831055,
+        "p": 0.08341176852560393
+      },
+      "strength_terms": {
+        "n": 42,
+        "rho": 0.24178971137382876,
+        "p": 0.12290892729524985
+      },
+      "degree_docs": {
+        "n": 11,
+        "rho": null,
+        "p": null
+      },
+      "degree_terms": {
+        "n": 42,
+        "rho": 1.0,
+        "p": 0.0
+      },
+      "birank_docs": {
+        "n": 11,
+        "rho": 0.30523997187739754,
+        "p": 0.36136637559800333
+      },
+      "birank_terms": {
+        "n": 42,
+        "rho": 0.858992730822379,
+        "p": 3.396156830806716e-13
+      },
+      "hits_docs": {
+        "n": 11,
+        "rho": -0.5284751751907181,
+        "p": 0.09467273983443358
+      },
+      "hits_terms": {
+        "n": 42,
+        "rho": -0.19081454070087522,
+        "p": 0.22610247650205542
+      },
+      "top10_terms_term_weight": [
+        "信息",
+        "国际原子能机构",
+        "监测",
+        "评估",
+        "福岛核电站",
+        "含氚废水",
+        "海洋环境",
+        "沟通交流",
+        "韩方",
+        "食品安全"
+      ],
+      "top10_terms_count": [
+        "海洋环境",
+        "食品安全",
+        "高度",
+        "负责的态度",
+        "福岛",
+        "国际社会",
+        "核泄漏",
+        "周边国家",
+        "人类健康",
+        "产生"
+      ],
+      "top10_term_overlap": 2
+    },
+    {
+      "setting": "all",
+      "left_nodes": 107,
+      "right_nodes": 107,
+      "left_edges": 180,
+      "right_edges": 180,
+      "shared_edges": 180,
+      "only_term_weight": 0,
+      "only_count": 0,
+      "same_topology": true,
+      "edge_weight": {
+        "n": 180,
+        "rho": 0.2119072980105688,
+        "p": 0.004293767530275181
+      },
+      "clusters_term_weight": 102,
+      "clusters_count": 4,
+      "cluster_pairwise_agreement": 0.6989948862634456,
+      "strength_docs": {
+        "n": 11,
+        "rho": 0.44545454545454555,
+        "p": 0.16973260492681172
+      },
+      "strength_terms": {
+        "n": 96,
+        "rho": 0.6327601665075432,
+        "p": 4.639166452950611e-12
+      },
+      "degree_docs": {
+        "n": 11,
+        "rho": 1.0,
+        "p": 0.0
+      },
+      "degree_terms": {
+        "n": 96,
+        "rho": 1.0,
+        "p": 0.0
+      },
+      "birank_docs": {
+        "n": 11,
+        "rho": 0.5272727272727273,
+        "p": 0.09556521835315422
+      },
+      "birank_terms": {
+        "n": 96,
+        "rho": 0.8647742603671251,
+        "p": 7.1619364975396e-30
+      },
+      "hits_docs": {
+        "n": 11,
+        "rho": -0.6181818181818182,
+        "p": 0.042645569805326695
+      },
+      "hits_terms": {
+        "n": 96,
+        "rho": 0.005314727245472263,
+        "p": 0.9590134006641837
+      },
+      "top10_terms_term_weight": [
+        "信息",
+        "评估",
+        "国际原子能机构",
+        "监测",
+        "方案",
+        "福岛核电站",
+        "含氚废水",
+        "福岛",
+        "食品安全",
+        "影响"
+      ],
+      "top10_terms_count": [
+        "海洋环境",
+        "食品安全",
+        "影响",
+        "日本政府",
+        "福岛",
+        "日本",
+        "民众健康",
+        "评估",
+        "安全",
+        "国际社会"
+      ],
+      "top10_term_overlap": 4
+    }
+  ],
+  "projections": [
+    {
+      "setting": "top5-doc",
+      "left_nodes": 11,
+      "right_nodes": 11,
+      "left_edges": 7,
+      "right_edges": 7,
+      "shared_edges": 7,
+      "same_topology": true,
+      "edge_weight": {
+        "n": 7,
+        "rho": -0.0727392967453308,
+        "p": 0.8768403578473787
+      },
+      "clusters_term_weight": 6,
+      "clusters_count": 6,
+      "cluster_pairwise_agreement": 0.8909090909090909,
+      "strength": {
+        "n": 11,
+        "rho": 0.6300733935050802,
+        "p": 0.03772361377832513
+      },
+      "betweenness": {
+        "n": 11,
+        "rho": 1.0,
+        "p": 0.0
+      },
+      "top_nodes_term_weight": [
+        "评估情况",
+        "多边合作",
+        "技术方案",
+        "生态文明",
+        "食品安全",
+        "公众舆论",
+        "排放背景",
+        "信息公开"
+      ],
+      "top_nodes_count": [
+        "生态文明",
+        "食品安全",
+        "公众舆论",
+        "排放背景",
+        "评估情况",
+        "多边合作",
+        "技术方案",
+        "信息公开"
+      ]
+    },
+    {
+      "setting": "top5-term",
+      "left_nodes": 42,
+      "right_nodes": 42,
+      "left_edges": 99,
+      "right_edges": 99,
+      "shared_edges": 99,
+      "same_topology": true,
+      "edge_weight": {
+        "n": 99,
+        "rho": -0.3905805783675437,
+        "p": 6.41936409767312e-05
+      },
+      "clusters_term_weight": 7,
+      "clusters_count": 7,
+      "cluster_pairwise_agreement": 0.9303135888501742,
+      "strength": {
+        "n": 42,
+        "rho": -0.3951292739437553,
+        "p": 0.00960352846137719
+      },
+      "betweenness": {
+        "n": 42,
+        "rho": 0.9999999999999999,
+        "p": 1.0641442854e-314
+      },
+      "top_nodes_term_weight": [
+        "信息",
+        "监测",
+        "国际原子能机构",
+        "韩方",
+        "沟通交流",
+        "评估",
+        "福岛核电站",
+        "含氚废水"
+      ],
+      "top_nodes_count": [
+        "海洋环境",
+        "食品安全",
+        "高度",
+        "负责的态度",
+        "周边国家",
+        "国际社会",
+        "国民",
+        "产生"
+      ]
+    },
+    {
+      "setting": "all-doc",
+      "left_nodes": 11,
+      "right_nodes": 11,
+      "left_edges": 43,
+      "right_edges": 43,
+      "shared_edges": 43,
+      "same_topology": true,
+      "edge_weight": {
+        "n": 43,
+        "rho": 0.6172194767871207,
+        "p": 1.0412368837890619e-05
+      },
+      "clusters_term_weight": 2,
+      "clusters_count": 3,
+      "cluster_pairwise_agreement": 0.6545454545454545,
+      "strength": {
+        "n": 11,
+        "rho": 0.1272727272727273,
+        "p": 0.7092146257733047
+      },
+      "betweenness": {
+        "n": 11,
+        "rho": 0.6536047667376083,
+        "p": 0.029174946085193703
+      },
+      "top_nodes_term_weight": [
+        "评估情况",
+        "技术方案",
+        "多边合作",
+        "生态文明",
+        "排放背景",
+        "公众舆论",
+        "成分信息",
+        "食品安全"
+      ],
+      "top_nodes_count": [
+        "生态文明",
+        "排放背景",
+        "公众舆论",
+        "食品安全",
+        "外交关系",
+        "评估情况",
+        "成分信息",
+        "信息公开"
+      ]
+    },
+    {
+      "setting": "all-term",
+      "left_nodes": 96,
+      "right_nodes": 96,
+      "left_edges": 1422,
+      "right_edges": 1422,
+      "shared_edges": 1422,
+      "same_topology": true,
+      "edge_weight": {
+        "n": 1422,
+        "rho": 0.3522032886602675,
+        "p": 8.671844106394679e-43
+      },
+      "clusters_term_weight": 6,
+      "clusters_count": 4,
+      "cluster_pairwise_agreement": 0.8239035087719299,
+      "strength": {
+        "n": 96,
+        "rho": 0.1723911187292704,
+        "p": 0.0930440525287877
+      },
+      "betweenness": {
+        "n": 96,
+        "rho": 0.7980174574781991,
+        "p": 2.161369204439268e-22
+      },
+      "top_nodes_term_weight": [
+        "信息",
+        "食品安全",
+        "评估",
+        "国际社会",
+        "日本政府",
+        "福岛",
+        "监测",
+        "国际原子能机构"
+      ],
+      "top_nodes_count": [
+        "海洋环境",
+        "日本政府",
+        "食品安全",
+        "影响",
+        "国际社会",
+        "周边国家",
+        "负责的态度",
+        "高度"
+      ]
+    }
+  ]
+}
