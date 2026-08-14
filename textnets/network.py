@@ -7,12 +7,17 @@ import os
 import sqlite3
 import warnings
 from abc import ABC, abstractmethod
-from collections import Counter
+from collections import Counter, defaultdict
 from enum import Flag
 from functools import cached_property
 from os import cpu_count
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any, Literal, Self
+from typing import IO, TYPE_CHECKING, Any, Literal
+
+try:
+    from typing import Self
+except ImportError:  # Python 3.10
+    from typing_extensions import Self
 
 import igraph as ig
 import leidenalg as la
@@ -335,6 +340,17 @@ class Textnet(TextnetBase):
     max_docs : int, optional
         Maximum number of documents a term can appear in and still be included
         in the network (default: None, meaning any number).
+    min_term_frequency : int, optional
+        Minimum total term count across documents (default: 1). Chinese
+        localization extension; official 0.10.5 only filters by document
+        frequency.
+    top_n_terms : int, optional
+        Keep only the *n* strongest terms per document, ranked by count then
+        tf-idf (default: None). Chinese localization extension.
+    edge_weight : {"term_weight", "count"}, optional
+        Bipartite edge weight. Official behavior uses ``term_weight``
+        (default). ``count`` reconstructs the 2024 patched graph, which used
+        occurrence counts instead of tf-idf.
     connected : bool, optional
         Keep only the largest connected component of the network (default:
         False).
@@ -354,18 +370,30 @@ class Textnet(TextnetBase):
         data: TidyText | BiadjacencyMatrix | pd.DataFrame,
         min_docs: int = 2,
         max_docs: int | None = None,
+        min_term_frequency: int = 1,
+        top_n_terms: int | None = None,
+        edge_weight: Literal["term_weight", "count"] = "term_weight",
         connected: bool = False,
         remove_weak_edges: bool = False,
         doc_attrs: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         self._connected = connected
         self._doc_attrs = doc_attrs
+        if edge_weight not in {"term_weight", "count"}:
+            raise ValueError("edge_weight must be 'term_weight' or 'count'.")
         if data.empty:
             raise ValueError("Data is empty.")
         if isinstance(data, BiadjacencyMatrix):
             self._matrix = data
         elif isinstance(data, TidyText | pd.DataFrame):
-            self._matrix = _matrix_from_tidy_text(data, min_docs, max_docs)
+            self._matrix = _matrix_from_tidy_text(
+                data,
+                min_docs,
+                max_docs,
+                min_term_frequency=min_term_frequency,
+                top_n_terms=top_n_terms,
+                edge_weight=edge_weight,
+            )
         if remove_weak_edges:
             pairs: pd.Series = self._matrix.stack(future_stack=True)
             edge_weights: pd.Series = pairs[pairs > 0]
@@ -450,6 +478,8 @@ class Textnet(TextnetBase):
         g.es["cost"] = [
             1 / pow(w, tn.params["tuning_parameter"]) for w in g.es["weight"]
         ]
+        if node_type in (DOC, "doc"):
+            _attach_doc_co_occurrence(g, self.m)
         if connected:
             g = giant_component(g)
         return ProjectedTextnet(g)
@@ -523,6 +553,7 @@ class Textnet(TextnetBase):
         node_label_filter: Callable[[ig.Vertex], bool] | None = None,
         edge_label_filter: Callable[[ig.Edge], bool] | None = None,
         scale_nodes_by: str | None = None,
+        scale_edges_by: str | None = None,
         **kwargs,
     ) -> Artist:
         """
@@ -581,7 +612,12 @@ class Textnet(TextnetBase):
         scale_nodes_by : str, optional
             Name of centrality measure or node attribute to scale nodes by.
             Possible values: ``degree``, ``strength``, ``hits``, ``cohits``,
-            ``birank`` or any node attribute (default: None).
+            ``birank`` or any node attribute such as ``total_frequency``
+            (default: None).
+        scale_edges_by : str, optional
+            Edge attribute used to scale widths. Chinese-localization values
+            include ``frequency_by_doc`` and ``doc_co_occurrence`` after those
+            attributes have been attached (default: None).
 
         Returns
         -------
@@ -600,6 +636,85 @@ class Textnet(TextnetBase):
         del args["self"], args["kwargs"]
         kwargs.update(args)
         return self._plot(**kwargs)
+
+    @property
+    def total_frequency(self) -> pd.Series:
+        """Term counts aligned to bipartite nodes; document nodes are 0."""
+        totals = getattr(self._matrix, "term_total_freq", pd.Series(dtype=float))
+        values = [
+            float(totals.get(node_id, 0)) if node_type == "term" else 0.0
+            for node_id, node_type in zip(self.nodes["id"], self.nodes["type"])
+        ]
+        return pd.Series(values, index=self.nodes["id"])
+
+    @property
+    def frequency_by_doc(self) -> pd.Series:
+        """Per-edge term counts aligned to bipartite edges."""
+        freq_map = getattr(self._matrix, "term_freq_dict", {})
+        values = []
+        for edge in self.graph.es:
+            source = self.graph.vs[edge.source]
+            target = self.graph.vs[edge.target]
+            term = source["id"] if source["type"] == "term" else target["id"]
+            doc = target["id"] if source["type"] == "term" else source["id"]
+            values.append(float((freq_map.get(term) or {}).get(doc, 0)))
+        return pd.Series(values)
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """Return node attributes plus localization metadata."""
+        g = self.graph
+        frame = pd.DataFrame({attr: g.vs[attr] for attr in g.vs.attributes()})
+        totals = getattr(self._matrix, "term_total_freq", None)
+        freq_map = getattr(self._matrix, "term_freq_dict", {})
+        tfidf_map = getattr(self._matrix, "term_tfidf_dict", {})
+        if totals is None:
+            return frame
+        frame["total_frequency"] = [
+            float(totals.get(node_id, 0)) if node_type == "term" else None
+            for node_id, node_type in zip(frame["id"], frame["type"])
+        ]
+        frame["frequency_by_doc"] = [
+            dict(freq_map.get(node_id, {})) if node_type == "term" else None
+            for node_id, node_type in zip(frame["id"], frame["type"])
+        ]
+        frame["tfidf_by_doc"] = [
+            dict(tfidf_map.get(node_id, {})) if node_type == "term" else None
+            for node_id, node_type in zip(frame["id"], frame["type"])
+        ]
+        return frame
+
+    def to_adjacency_dataframe(self) -> pd.DataFrame:
+        """Return the bipartite adjacency matrix as a DataFrame."""
+        return self._matrix.to_dataframe()
+
+    def print_node_attributes(self) -> pd.DataFrame:
+        """Return node attributes. Kept as a compatibility alias.
+
+        The 2024 patch printed attributes to stdout. This edition returns a
+        DataFrame so callers can inspect without flooding logs.
+        """
+        return self.to_dataframe()
+
+    def to_networkx(self):
+        """Export the bipartite graph to NetworkX if it is installed."""
+        try:
+            import networkx as nx
+        except ImportError as err:
+            raise ImportError(
+                "to_networkx requires networkx. Install it separately."
+            ) from err
+        graph = nx.Graph()
+        for vertex in self.graph.vs:
+            graph.add_node(vertex["id"], bipartite=vertex["type"], **{
+                key: vertex[key]
+                for key in vertex.attributes()
+                if key not in {"id"}
+            })
+        for edge in self.graph.es:
+            source = self.graph.vs[edge.source]["id"]
+            target = self.graph.vs[edge.target]["id"]
+            graph.add_edge(source, target, weight=edge["weight"])
+        return graph
 
     @cached_property
     def hits(self) -> pd.Series:
@@ -788,6 +903,42 @@ class ProjectedTextnet(TextnetBase):
         to_plot = self.alpha_cut(alpha) if alpha is not None else self
         return to_plot._plot(**kwargs)
 
+    def to_dataframe(self) -> pd.DataFrame:
+        """Return node attributes of the projected graph."""
+        g = self.graph
+        return pd.DataFrame({attr: g.vs[attr] for attr in g.vs.attributes()})
+
+    def to_adjacency_dataframe(self) -> pd.DataFrame:
+        """Return the projected weighted adjacency matrix."""
+        return self.m.copy()
+
+    def doc_co_occurrence_dataframe(self) -> pd.DataFrame:
+        """Return pairwise document co-occurrence counts and shared terms.
+
+        Requires a document projection created by ``Textnet.project``.
+        """
+        if "doc_co_occurrence" not in self.graph.vs.attributes():
+            raise ValueError(
+                "doc_co_occurrence is only available on document projections "
+                "created by Textnet.project(node_type=DOC)."
+            )
+        rows = []
+        seen: set[tuple[str, str]] = set()
+        for vertex in self.graph.vs:
+            source = vertex["id"]
+            for target, payload in (vertex["doc_co_occurrence"] or {}).items():
+                pair = tuple(sorted((source, target)))
+                if pair in seen:
+                    continue
+                seen.add(pair)
+                rows.append({
+                    "doc_a": pair[0],
+                    "doc_b": pair[1],
+                    "count": payload.get("count", 0),
+                    "terms": payload.get("terms", []),
+                })
+        return pd.DataFrame(rows)
+
     def _partition_graph(self) -> ig.VertexClustering:
         return la.find_partition(
             self.graph,
@@ -812,35 +963,102 @@ ProjectedTextnet.top_ev = ProjectedTextnet.top_eigenvector_centrality  # type: i
 
 
 def _matrix_from_tidy_text(
-    tidy_text: TidyText | pd.DataFrame, min_docs: int, max_docs: int | None
+    tidy_text: TidyText | pd.DataFrame,
+    min_docs: int,
+    max_docs: int | None,
+    min_term_frequency: int = 1,
+    top_n_terms: int | None = None,
+    edge_weight: Literal["term_weight", "count"] = "term_weight",
 ) -> BiadjacencyMatrix:
+    frame = tidy_text.to_dataframe() if hasattr(tidy_text, "to_dataframe") else pd.DataFrame(tidy_text)
+    if frame.index.name != "label" and "label" not in frame.columns:
+        frame = frame.copy()
+        frame.index.name = frame.index.name or "label"
+    work = frame.reset_index()
+    if "label" not in work.columns:
+        work = work.rename(columns={work.columns[0]: "label"})
+
     if max_docs is None:
-        max_docs = tidy_text.index.unique().shape[0]
+        max_docs = work["label"].nunique()
     if min_docs > max_docs:
         raise ValueError(f"min_docs must be smaller or equal to max_docs ({max_docs}).")
-    count = tidy_text.groupby("term").count()["n"]
-    filter_condition = (count >= min_docs) & (count <= max_docs)
-    tt = (
-        tidy_text
-        .reset_index()
-        .merge(filter_condition, on="term", how="left")
-        .rename(columns={"n_y": "keep", "n_x": "n"})
-    )
-    m = (
-        tt[tt["keep"]]
-        .groupby(["label", "term"])
-        .first()["term_weight"]
+
+    doc_freq = work.groupby("term")["label"].nunique()
+    keep_by_docs = (doc_freq >= min_docs) & (doc_freq <= max_docs)
+    work = work[work["term"].map(keep_by_docs).fillna(False)]
+
+    token_freq = work.groupby("term")["n"].sum()
+    work = work[work["term"].map(lambda term: token_freq.get(term, 0) >= min_term_frequency)]
+
+    if top_n_terms:
+        if "term_weight" not in work.columns:
+            raise ValueError("top_n_terms requires a term_weight column.")
+        work = (
+            work.sort_values(["label", "n", "term_weight"], ascending=[True, False, False])
+            .groupby("label", as_index=False)
+            .head(top_n_terms)
+        )
+
+    value_col = "n" if edge_weight == "count" else "term_weight"
+    if value_col not in work.columns:
+        raise ValueError(f"Tidy text is missing the {value_col} column.")
+    matrix = (
+        work.groupby(["label", "term"])[value_col]
+        .sum()
         .astype(pd.SparseDtype("float"))
         .unstack(fill_value=0)
     )
-    return BiadjacencyMatrix(m.astype("float64"))
+    result = BiadjacencyMatrix(matrix.astype("float64"))
+    result.term_total_freq = work.groupby("term")["n"].sum()
+    result.term_freq_dict = {
+        term: group.set_index("label")["n"].to_dict()
+        for term, group in work.groupby("term")
+    }
+    if "term_weight" in work.columns:
+        result.term_tfidf_dict = {
+            term: group.set_index("label")["term_weight"].to_dict()
+            for term, group in work.groupby("term")
+        }
+    else:
+        result.term_tfidf_dict = {}
+    return result
+
+
+def _attach_doc_co_occurrence(graph: ig.Graph, matrix: BiadjacencyMatrix) -> None:
+    """Record shared terms for each document-document edge."""
+    frame = matrix.to_dataframe()
+    doc_co_occurrence: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
+    for edge in graph.es:
+        doc_i = graph.vs[edge.source]["id"]
+        doc_j = graph.vs[edge.target]["id"]
+        if doc_i not in frame.index or doc_j not in frame.index:
+            continue
+        shared = frame.columns[(frame.loc[doc_i] > 0) & (frame.loc[doc_j] > 0)].tolist()
+        payload = {"count": len(shared), "terms": shared}
+        doc_co_occurrence[doc_i][doc_j] = payload
+        doc_co_occurrence[doc_j][doc_i] = payload
+        edge["doc_co_occurrence"] = len(shared)
+    for vertex in graph.vs:
+        vertex["doc_co_occurrence"] = dict(doc_co_occurrence.get(vertex["id"], {}))
 
 
 def _graph_from_matrix(m: BiadjacencyMatrix) -> ig.Graph:
-    g = ig.Graph.Biadjacency(m.to_numpy(), directed=False, weighted=True)
+    array = m.to_numpy()
+    if array.size == 0 or 0 in array.shape:
+        graph = ig.Graph(directed=False)
+        ids = list(m.index) + list(m.columns)
+        if ids:
+            graph.add_vertices(len(ids))
+            graph.vs["id"] = ids
+            graph.vs["type"] = ["doc"] * len(m.index) + ["term"] * len(m.columns)
+        return graph
+    g = ig.Graph.Biadjacency(array, directed=False, weighted=True)
     g.vs["id"] = np.append(m.index, m.columns).tolist()
-    g.es["cost"] = [1 / pow(w, tn.params["tuning_parameter"]) for w in g.es["weight"]]
     g.vs["type"] = ["term" if t else "doc" for t in g.vs["type"]]
+    if g.ecount() > 0 and "weight" in g.es.attributes():
+        g.es["cost"] = [
+            1 / pow(w, tn.params["tuning_parameter"]) for w in g.es["weight"]
+        ]
     return g
 
 

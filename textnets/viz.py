@@ -185,6 +185,8 @@ def decorate_plot(plot_func: Callable) -> Callable:
         if scale_edges_by is not None:
             if scale_edges_by in net.graph.edge_attributes():
                 dist = Series(net.edges[scale_edges_by])
+            elif hasattr(net, scale_edges_by):
+                dist = Series(getattr(net, scale_edges_by))
             else:
                 dist = Series(scale_edges_by)
             if abs(dist.skew()) < 2:

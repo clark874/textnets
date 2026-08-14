@@ -1,0 +1,86 @@
+{
+  "edition": "0.10.5+cn.1",
+  "baseline": "v0.10.5",
+  "legacyPatch": "site-packages textnets 0.9.4, 2024-05/06",
+  "defaultBehavior": "official term_weight edges",
+  "changes": [
+    {
+      "id": "custom-tokenized",
+      "kind": "chinese-tokenization",
+      "status": "ported-and-fixed",
+      "legacy": "Corpus.custom_tokenized + _custom_tokenize; spaCy Token filters after jieba would fail",
+      "current": "Corpus.custom_tokenized runs jieba then string filters; stem/stop-word flags are compatibility no-ops",
+      "envCard": "active-reuse via external jieba plus this optional API",
+      "emergencyEdu": "compatibility-reference; English tokenized() still used",
+      "fukushima": "historical-only"
+    },
+    {
+      "id": "tidytext-dataframe",
+      "kind": "export",
+      "status": "ported",
+      "legacy": "TidyText.to_dataframe and TidyText(list-of-dicts)",
+      "current": "LiteFrame.to_dataframe; TidyText accepts record lists",
+      "envCard": "active-reuse",
+      "emergencyEdu": "unused",
+      "fukushima": "unused"
+    },
+    {
+      "id": "min-term-frequency-top-n",
+      "kind": "filtering",
+      "status": "ported-and-clarified",
+      "legacy": "Textnet(min_term_frequency, top_n_terms); min_term_frequency used value_counts",
+      "current": "min_term_frequency uses sum(n); top_n_terms kept; official min_docs/max_docs unchanged",
+      "envCard": "active-reuse (top_n_terms=5)",
+      "emergencyEdu": "unused",
+      "fukushima": "unused"
+    },
+    {
+      "id": "edge-weight-count",
+      "kind": "network-weight",
+      "status": "opt-in-only",
+      "legacy": "_matrix_from_tidy_text used groupby.size() after computing tf-idf",
+      "current": "edge_weight='term_weight' default; edge_weight='count' reconstructs the 2024 graph",
+      "risk": "high-value-unverified",
+      "envCard": "active-reuse if the 2024 installed package was used",
+      "emergencyEdu": "compatibility-reference",
+      "fukushima": "historical-only"
+    },
+    {
+      "id": "term-node-attributes",
+      "kind": "export",
+      "status": "ported",
+      "legacy": "total_frequency, frequency_by_doc, tfidf_by_doc, print_node_attributes",
+      "current": "same attributes plus to_dataframe; print_node_attributes returns a DataFrame",
+      "envCard": "active-reuse",
+      "emergencyEdu": "unused",
+      "fukushima": "unused"
+    },
+    {
+      "id": "doc-co-occurrence",
+      "kind": "projection",
+      "status": "ported",
+      "legacy": "project() stored vertex dicts; doc_co_occurrence_dataframe()",
+      "current": "vertex dicts plus edge attribute doc_co_occurrence for official scale_edges_by",
+      "envCard": "active-reuse",
+      "emergencyEdu": "unused",
+      "fukushima": "unused"
+    },
+    {
+      "id": "networkx-and-matplotlib-plot",
+      "kind": "visualization",
+      "status": "partial",
+      "legacy": "to_networkx and plot_with_matplotlib",
+      "current": "to_networkx optional; plot_with_matplotlib not ported (debug-heavy, superseded by official plot + CJK font extra)",
+      "envCard": "notebook used custom matplotlib wrappers more than plot_with_matplotlib",
+      "emergencyEdu": "unused",
+      "fukushima": "unused"
+    },
+    {
+      "id": "debug-prints",
+      "kind": "debug",
+      "status": "dropped",
+      "legacy": "viz.py and _matrix_from_tidy_text printed internals",
+      "current": "not ported"
+    }
+  ]
+}

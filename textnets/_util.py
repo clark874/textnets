@@ -83,6 +83,14 @@ class LiteFrame:
     def __array__(self, dtype=None) -> ndarray:
         return self._df.__array__(dtype=dtype)
 
+    def to_dataframe(self) -> DataFrame:
+        """Return a copy of the wrapped DataFrame.
+
+        This restores the convenience method used by the 2024 Chinese
+        localization without changing the official LiteFrame internals.
+        """
+        return self._df.copy()
+
     def to_array(self) -> ndarray:
         """Return numpy array with float32 numeric data."""
         a = self.to_numpy()

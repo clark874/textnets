@@ -6,7 +6,12 @@ import os
 import sqlite3
 from os import cpu_count
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any
+
+try:
+    from typing import Self
+except ImportError:  # Python 3.10
+    from typing_extensions import Self
 
 import numpy as np
 import pandas as pd
@@ -19,6 +24,11 @@ from wasabi import msg
 import textnets as tn
 
 from ._util import LiteFrame, df_split
+
+try:
+    import jieba
+except ImportError:  # pragma: no cover - optional extra
+    jieba = None
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
@@ -444,6 +454,82 @@ class Corpus:
         tt = self._make_tidy_text(func)
         return _tf_idf(tt, sublinear)
 
+    def custom_tokenized(
+        self,
+        custom_dict: list[str] | None = None,
+        remove: list[str] | None = None,
+        stem: bool = False,
+        remove_stop_words: bool = False,
+        remove_urls: bool = True,
+        remove_numbers: bool = True,
+        remove_punctuation: bool = True,
+        lower: bool = False,
+        sublinear: bool = False,
+        restrict_to_dict: bool = False,
+    ) -> TidyText:
+        """Tokenize the corpus with jieba and an optional custom dictionary.
+
+        This is the reconstructed Chinese-localization entry point. Unlike the
+        2024 site-packages patch, filters run on string tokens after jieba
+        segmentation, because spaCy ``Token`` filters cannot be applied to
+        jieba output. Stemming is disabled by default.
+
+        Parameters
+        ----------
+        custom_dict : list of str, optional
+            Extra words injected into the jieba dictionary.
+        remove : list of str, optional
+            Additional tokens to remove.
+        stem : bool, optional
+            Unused compatibility flag. Jieba tokens are strings, so stemming
+            is not applied (default: False).
+        remove_stop_words : bool, optional
+            Unused compatibility flag. spaCy stop-word filters do not apply to
+            jieba string tokens (default: False).
+        remove_urls : bool, optional
+            Drop tokens that look like URLs (default: True).
+        remove_numbers : bool, optional
+            Drop purely numeric tokens (default: True).
+        remove_punctuation : bool, optional
+            Drop tokens that contain no alphanumeric characters (default: True).
+        lower : bool, optional
+            Lower-case tokens (default: False; Chinese terms are unchanged).
+        sublinear : bool, optional
+            Apply sublinear tf-idf scaling (default: False).
+        restrict_to_dict : bool, optional
+            Keep only tokens that appear in ``custom_dict`` (default: False).
+
+        Returns
+        -------
+        `TidyText`
+            Document labels, terms, counts, and term weights.
+        """
+        if jieba is None:
+            raise ImportError(
+                "custom_tokenized requires jieba. Install textnets with the "
+                "'zh' extra or `pip install jieba`."
+            )
+        if stem:
+            msg.info("custom_tokenized ignores stem=True; jieba tokens are strings.")
+        if remove_stop_words:
+            msg.info(
+                "custom_tokenized ignores remove_stop_words=True; pass extra "
+                "tokens via remove=... instead."
+            )
+
+        func = partial(
+            _custom_tokenize,
+            custom_dict=custom_dict or [],
+            remove=remove,
+            remove_urls=remove_urls,
+            remove_numbers=remove_numbers,
+            remove_punctuation=remove_punctuation,
+            lower=lower,
+            restrict_to_dict=restrict_to_dict,
+        )
+        tt = self._make_tidy_text(func)
+        return _tf_idf(tt, sublinear)
+
     def noun_phrases(
         self,
         normalize: bool = False,
@@ -703,5 +789,56 @@ class NoDocumentColumnException(Exception):
     """Raised if no suitable document column is specified or found."""
 
 
+def _custom_tokenize(
+    doc: Doc,
+    custom_dict: list[str],
+    remove: list[str] | None = None,
+    remove_urls: bool = True,
+    remove_numbers: bool = True,
+    remove_punctuation: bool = True,
+    lower: bool = False,
+    restrict_to_dict: bool = False,
+) -> list[str]:
+    """Segment a spaCy document with jieba and an optional custom dictionary."""
+    if jieba is None:  # pragma: no cover - guarded by caller
+        raise ImportError("jieba is required for custom Chinese tokenization.")
+    for word in custom_dict:
+        if word:
+            jieba.add_word(word)
+    text = doc.text if hasattr(doc, "text") else "".join(token.text for token in doc)
+    tokens = jieba.lcut(text)
+    if restrict_to_dict and custom_dict:
+        allowed = set(custom_dict)
+        tokens = [token for token in tokens if token in allowed]
+    if remove_punctuation:
+        tokens = [token for token in tokens if any(ch.isalnum() for ch in token)]
+    if remove_numbers:
+        tokens = [token for token in tokens if not token.isdigit()]
+    if remove_urls:
+        tokens = [
+            token
+            for token in tokens
+            if "://" not in token and "@" not in token and not token.startswith("www.")
+        ]
+    if lower:
+        tokens = [token.lower() for token in tokens]
+    if remove:
+        blocked = set(remove)
+        tokens = [token for token in tokens if token not in blocked]
+    return tokens
+
+
 class TidyText(LiteFrame):
     """Collection of tokens with per-document counts."""
+
+    def __init__(self, data: Any = None, *args, **kwargs) -> None:
+        if isinstance(data, list):
+            frame = pd.DataFrame(data)
+            if "label" in frame.columns:
+                frame = frame.set_index("label")
+            super().__init__(frame)
+            return
+        if data is None:
+            super().__init__(*args, **kwargs)
+            return
+        super().__init__(data, *args, **kwargs)

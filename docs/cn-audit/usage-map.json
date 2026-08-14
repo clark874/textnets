@@ -1,0 +1,29 @@
+{
+  "env-card": {
+    "status": "active-reuse",
+    "path": "/Users/moongoat/Documents/writing/中国对外话语中的“环境牌”问题——基于外交部例行记者会提问的语义网络分析/程序文件/中国外交部数据处理程序/核心话题-实体双模网.ipynb",
+    "used": [
+      "tokenized(stem=False, lower=False, sublinear=False)",
+      "TidyText(list).to_dataframe()",
+      "_tf_idf(..., sublinear=False)",
+      "Textnet(..., min_docs=1, top_n_terms=5)",
+      "print_node_attributes()",
+      "to_dataframe()",
+      "project(node_type=DOC).doc_co_occurrence_dataframe()",
+      "plot(scale_nodes_by='total_frequency', scale_edges_by='frequency_by_doc'|'doc_co_occurrence')"
+    ],
+    "external": "jieba + custom dictionary + POS filter in the notebook, not Corpus.custom_tokenized"
+  },
+  "emergency-edu": {
+    "status": "compatibility-reference",
+    "path": "/Users/moongoat/Documents/writing/应急管理教育/应急管理教育wos分析.py",
+    "used": ["Corpus(..., lang='en')", "tokenized(stem=True)", "Textnet"],
+    "note": "English WOS abstracts; no Chinese source patches required"
+  },
+  "fukushima": {
+    "status": "historical-only",
+    "path": "/Users/moongoat/Downloads/diplomacy_analysis/jp_diplomacy/jp_diplomacy_py/_archive/obsolete_word_network_textnets.py",
+    "used": ["Corpus.tokenized with obsolete kwargs", "commented jieba path"],
+    "note": "Project already marked this textnets route obsolete"
+  }
+}
